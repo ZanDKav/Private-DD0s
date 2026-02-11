@@ -110,12 +110,14 @@ bot.onText(/\/status/, (msg) => {
     
     if (attack) {
         const elapsed = ((Date.now() - attack.startTime) / 1000).toFixed(1);
+        const totalReq = attack.engine.stats.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        
         bot.sendMessage(chatId, 
             `⚠️ *ATTACK AKTIF*\n\n` +
             `🎯 Target: \`${attack.target}\`\n` +
             `⏱️ Elapsed: ${elapsed}s / ${attack.duration}s\n` +
-            `🧵 Threads: ${attack.threads:,}\n` +
-            `📊 Requests: ${attack.engine.stats.total.toLocaleString()}\n` +
+            `🧵 Threads: ${attack.threads}\n` +
+            `📊 Requests: ${totalReq}\n` +
             `/stop - Hentikan attack`,
             { parse_mode: 'Markdown' }
         );
@@ -136,7 +138,7 @@ bot.onText(/\/stop/, (msg) => {
         activeAttacks.delete(userId);
         
         const elapsed = ((Date.now() - attack.startTime) / 1000).toFixed(1);
-        const total = attack.engine.stats.total.toLocaleString();
+        const total = attack.engine.stats.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         
         bot.sendMessage(chatId, 
             `🛑 *ATTACK DIHENTIKAN*\n\n` +
@@ -168,6 +170,9 @@ bot.onText(/\/stats/, (msg) => {
         totalSuccess += attack.engine.stats.success;
     }
     
+    const totalReqFormatted = totalRequests.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const totalSuccFormatted = totalSuccess.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    
     const stats = `
 📊 *BOT STATISTICS*
 ━━━━━━━━━━━━━━━━━━━━━
@@ -178,8 +183,8 @@ bot.onText(/\/stats/, (msg) => {
 
 ⚡ *ATTACKS*
 ├─ Active: ${totalAttacks}
-├─ Total Req: ${totalRequests.toLocaleString()}
-└─ Success: ${totalSuccess.toLocaleString()}
+├─ Total Req: ${totalReqFormatted}
+└─ Success: ${totalSuccFormatted}
 
 🌐 *RESOURCES*
 ├─ IPs: 100,000+
@@ -240,6 +245,7 @@ bot.on('message', async (msg) => {
     if (parts.length >= 2) {
         duration = parseInt(parts[1]);
         if (isNaN(duration) || duration < 0) duration = 60;
+        if (duration > 3600) duration = 3600;
     }
     
     // Parse threads
@@ -271,13 +277,17 @@ bot.on('message', async (msg) => {
         );
     }
     
+    // Format angka untuk ditampilkan
+    const threadsFormatted = threads.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    const targetReqFormatted = targetRequests === 0 ? 'UNLIMITED' : targetRequests.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    
     // ============ CONFIRMATION ============
     const confirmMsg = await bot.sendMessage(chatId, 
         `⚡ *KONFIRMASI ATTACK* ⚡\n\n` +
         `🎯 *Target:* \`${target}\`\n` +
         `⏱️ *Duration:* ${duration === 0 ? 'UNLIMITED' : duration + ' detik'}\n` +
-        `🧵 *Threads:* ${threads.toLocaleString()}\n` +
-        `📊 *Target Req:* ${targetRequests === 0 ? 'UNLIMITED' : targetRequests.toLocaleString()}\n` +
+        `🧵 *Threads:* ${threadsFormatted}\n` +
+        `📊 *Target Req:* ${targetReqFormatted}\n` +
         `🔥 *Target RPS:* 10,000\n\n` +
         `✅ *CloudFlare Bypass:* ACTIVE\n` +
         `🌐 *IP Pool:* 100,000+\n\n` +
@@ -306,8 +316,8 @@ bot.on('message', async (msg) => {
         `[${'█'.repeat(10)}${'░'.repeat(40)}] 0%\n\n` +
         `🎯 *Target:* \`${target}\`\n` +
         `⏱️ *Duration:* ${duration === 0 ? 'UNLIMITED' : duration + 's'}\n` +
-        `🧵 *Threads:* ${threads.toLocaleString()}\n` +
-        `📊 *Target:* ${targetRequests === 0 ? 'UNLIMITED' : targetRequests.toLocaleString()}\n` +
+        `🧵 *Threads:* ${threadsFormatted}\n` +
+        `📊 *Target:* ${targetReqFormatted}\n` +
         `📈 *Requests:* 0\n` +
         `✅ *Success:* 0 (0%)\n` +
         `🛡️ *CF Bypass:* 0 (0%)\n` +
@@ -346,6 +356,12 @@ bot.on('message', async (msg) => {
         const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : 0;
         const cfRate = total > 0 ? ((cfBypass / total) * 100).toFixed(1) : 0;
         
+        // Format angka
+        const totalFormatted = total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const successFormatted = success.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const cfFormatted = cfBypass.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        const rpsFormatted = rps.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        
         // Progress bar
         let progress = 0;
         if (duration > 0) {
@@ -376,18 +392,22 @@ bot.on('message', async (msg) => {
             attackEngine.stop();
             activeAttacks.delete(userId);
             
+            // Hitung average RPS
+            const avgRPS = Math.round(total / elapsed);
+            const avgRPSFormatted = avgRPS.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            
             // Final message
             bot.editMessageText(
                 `✅ *ATTACK COMPLETED!* ✅\n\n` +
                 `[${'█'.repeat(50)}] 100%\n\n` +
                 `🎯 *Target:* \`${target}\`\n` +
-                `⏱️ *Duration:* ${elapsed.toFixed(1)}s\n` +
-                `🧵 *Threads:* ${threads.toLocaleString()}\n` +
-                `📊 *Total Req:* ${total.toLocaleString()}\n` +
-                `✅ *Success:* ${success.toLocaleString()} (${successRate}%)\n` +
-                `🛡️ *CF Bypass:* ${cfBypass.toLocaleString()} (${cfRate}%)\n` +
-                `⚡ *Avg RPS:* ${rps.toLocaleString()}\n\n` +
-                `🔥 *10K RPS:* ${rps >= 10000 ? '✅ ACHIEVED' : '❌ NOT ACHIEVED'}\n` +
+                `⏱️ *Duration:* ${parseFloat(elapsed).toFixed(1)}s\n` +
+                `🧵 *Threads:* ${threadsFormatted}\n` +
+                `📊 *Total Req:* ${totalFormatted}\n` +
+                `✅ *Success:* ${successFormatted} (${successRate}%)\n` +
+                `🛡️ *CF Bypass:* ${cfFormatted} (${cfRate}%)\n` +
+                `⚡ *Avg RPS:* ${avgRPSFormatted}\n\n` +
+                `🔥 *10K RPS:* ${avgRPS >= 10000 ? '✅ ACHIEVED' : '❌ NOT ACHIEVED'}\n` +
                 `🛑 *Reason:* ${stopReason}`,
                 {
                     chat_id: chatId,
@@ -404,12 +424,12 @@ bot.on('message', async (msg) => {
             `⚡ *ATTACK RUNNING* ⚡\n\n` +
             `[${bar}] ${progress.toFixed(1)}%\n\n` +
             `🎯 *Target:* \`${target}\`\n` +
-            `⏱️ *Time:* ${elapsed.toFixed(1)}s / ${duration === 0 ? '∞' : duration + 's'}\n` +
-            `🧵 *Threads:* ${threads.toLocaleString()}\n` +
-            `📊 *Requests:* ${total.toLocaleString()}\n` +
-            `✅ *Success:* ${success.toLocaleString()} (${successRate}%)\n` +
-            `🛡️ *CF Bypass:* ${cfBypass.toLocaleString()} (${cfRate}%)\n` +
-            `⚡ *RPS:* ${rps.toLocaleString()}\n\n` +
+            `⏱️ *Time:* ${parseFloat(elapsed).toFixed(1)}s / ${duration === 0 ? '∞' : duration + 's'}\n` +
+            `🧵 *Threads:* ${threadsFormatted}\n` +
+            `📊 *Requests:* ${totalFormatted}\n` +
+            `✅ *Success:* ${successFormatted} (${successRate}%)\n` +
+            `🛡️ *CF Bypass:* ${cfFormatted} (${cfRate}%)\n` +
+            `⚡ *RPS:* ${rpsFormatted}\n\n` +
             `🔥 *Target RPS:* 10,000\n` +
             `🛑 /stop - Hentikan attack`,
             {
