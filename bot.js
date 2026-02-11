@@ -101,7 +101,7 @@ bot.onText(/\/help/, (msg) => {
     });
 });
 
-// Status Command
+// ✅ PERBAIKAN 1: Status Command dengan safety check
 bot.onText(/\/status/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -110,7 +110,8 @@ bot.onText(/\/status/, (msg) => {
     
     if (attack) {
         const elapsed = ((Date.now() - attack.startTime) / 1000).toFixed(1);
-        const totalReq = attack.engine.stats.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        // FIX: Tambah safety check untuk stats.total
+        const totalReq = (attack.engine?.stats?.total ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         
         bot.sendMessage(chatId, 
             `⚠️ *ATTACK AKTIF*\n\n` +
@@ -126,7 +127,7 @@ bot.onText(/\/status/, (msg) => {
     }
 });
 
-// Stop Command
+// ✅ PERBAIKAN 2: Stop Command dengan safety check
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
@@ -138,7 +139,8 @@ bot.onText(/\/stop/, (msg) => {
         activeAttacks.delete(userId);
         
         const elapsed = ((Date.now() - attack.startTime) / 1000).toFixed(1);
-        const total = attack.engine.stats.total.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        // FIX: Tambah safety check untuk stats.total
+        const total = (attack.engine?.stats?.total ?? 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
         
         bot.sendMessage(chatId, 
             `🛑 *ATTACK DIHENTIKAN*\n\n` +
@@ -153,7 +155,7 @@ bot.onText(/\/stop/, (msg) => {
     }
 });
 
-// Stats Command
+// ✅ PERBAIKAN 3: Stats Command dengan safety check
 bot.onText(/\/stats/, (msg) => {
     const chatId = msg.chat.id;
     
@@ -162,12 +164,12 @@ bot.onText(/\/stats/, (msg) => {
     const cpu = os.loadavg()[0].toFixed(2);
     const uptime = (process.uptime() / 60).toFixed(1);
     
-    // Hitung total requests semua attack
+    // FIX: Hitung total requests dengan safety check
     let totalRequests = 0;
     let totalSuccess = 0;
     for (const [_, attack] of activeAttacks) {
-        totalRequests += attack.engine.stats.total;
-        totalSuccess += attack.engine.stats.success;
+        totalRequests += attack.engine?.stats?.total ?? 0;
+        totalSuccess += attack.engine?.stats?.success ?? 0;
     }
     
     const totalReqFormatted = totalRequests.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -347,11 +349,13 @@ bot.on('message', async (msg) => {
         const attack = activeAttacks.get(userId);
         if (!attack) return;
         
-        const elapsed = stats.elapsed;
-        const total = stats.total;
-        const success = stats.success;
-        const cfBypass = stats.cfBypassed;
-        const rps = stats.rps;
+        // ✅ FIX: Safety check untuk stats object
+        stats = stats || {};
+        const elapsed = stats.elapsed || 0;
+        const total = stats.total || 0;
+        const success = stats.success || 0;
+        const cfBypass = stats.cfBypassed || 0;
+        const rps = stats.rps || 0;
         
         const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : 0;
         const cfRate = total > 0 ? ((cfBypass / total) * 100).toFixed(1) : 0;
@@ -393,7 +397,7 @@ bot.on('message', async (msg) => {
             activeAttacks.delete(userId);
             
             // Hitung average RPS
-            const avgRPS = Math.round(total / elapsed);
+            const avgRPS = elapsed > 0 ? Math.round(total / elapsed) : 0;
             const avgRPSFormatted = avgRPS.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
             
             // Final message
